@@ -16,6 +16,7 @@ import io.netty.util.CharsetUtil;
 import io.netty.util.NetUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
@@ -25,7 +26,7 @@ public class QuicClient {
 
   public static void main(String[] args) throws Exception {
     QuicSslContext context = QuicSslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).
-        applicationProtocols("h3").build();
+        applicationProtocols("http/0.9").build();
     NioEventLoopGroup group = new NioEventLoopGroup(1);
     try {
       ChannelHandler codec = new QuicClientCodecBuilder()

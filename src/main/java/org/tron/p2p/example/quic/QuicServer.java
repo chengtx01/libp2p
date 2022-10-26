@@ -25,7 +25,7 @@ public class QuicServer {
     SelfSignedCertificate selfSignedCertificate = new SelfSignedCertificate();
     QuicSslContext context = QuicSslContextBuilder.forServer(
         selfSignedCertificate.privateKey(), null, selfSignedCertificate.certificate())
-        .applicationProtocols("h3").build();
+        .applicationProtocols("http/0.9").build();
     NioEventLoopGroup group = new NioEventLoopGroup(1);
     ChannelHandler codec = new QuicServerCodecBuilder().sslContext(context)
         .maxIdleTimeout(50000, TimeUnit.MILLISECONDS)
