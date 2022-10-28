@@ -25,7 +25,7 @@ public class QuicServer {
     SelfSignedCertificate selfSignedCertificate = new SelfSignedCertificate();
     QuicSslContext context = QuicSslContextBuilder.forServer(
         selfSignedCertificate.privateKey(), null, selfSignedCertificate.certificate())
-        .applicationProtocols("http/0.9").build();
+        .applicationProtocols("h3").build();
     NioEventLoopGroup group = new NioEventLoopGroup(1);
     ChannelHandler codec = new QuicServerCodecBuilder().sslContext(context)
         .maxIdleTimeout(50000, TimeUnit.MILLISECONDS)
@@ -93,8 +93,8 @@ public class QuicServer {
       Channel channel = bs.group(group)
           .channel(NioDatagramChannel.class)
           .handler(codec)
-          .bind(new InetSocketAddress(9999)).sync().channel();
-      log.info("Quic server started, channel {}:{}", channel.remoteAddress(), 9999);
+          .bind(new InetSocketAddress(8992)).sync().channel();
+      log.info("Quic server started, channel {}:{}", channel.localAddress(), 8992);
       channel.closeFuture().sync();
     } finally {
       group.shutdownGracefully();

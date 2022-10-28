@@ -13,10 +13,8 @@ import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.incubator.codec.quic.*;
 import io.netty.util.CharsetUtil;
-import io.netty.util.NetUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
@@ -26,7 +24,7 @@ public class QuicClient {
 
   public static void main(String[] args) throws Exception {
     QuicSslContext context = QuicSslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).
-        applicationProtocols("http/0.9").build();
+        applicationProtocols("h3").build();
     NioEventLoopGroup group = new NioEventLoopGroup(1);
     try {
       ChannelHandler codec = new QuicClientCodecBuilder()
@@ -42,7 +40,7 @@ public class QuicClient {
       Channel channel = bs.group(group)
           .channel(NioDatagramChannel.class)
           .handler(codec)
-          .bind(0).sync().channel();
+          .bind(9999).sync().channel();
 
       QuicChannel quicChannel = QuicChannel.newBootstrap(channel)
           .streamHandler(new ChannelInboundHandlerAdapter() {
@@ -55,7 +53,7 @@ public class QuicClient {
               //ctx.close();
             }
           })
-          .remoteAddress(new InetSocketAddress(NetUtil.LOCALHOST4, 9999))
+          .remoteAddress(new InetSocketAddress("47.252.73.5", 8992))
           .connect()
           .get();
 
