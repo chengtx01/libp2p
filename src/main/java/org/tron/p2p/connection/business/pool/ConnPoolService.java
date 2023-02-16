@@ -17,6 +17,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import io.netty.channel.ChannelFuture;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -42,6 +44,8 @@ public class ConnPoolService extends P2pEventHandler {
   private final AtomicInteger passivePeersCount = new AtomicInteger(0);
   @Getter
   private final AtomicInteger activePeersCount = new AtomicInteger(0);
+  @Getter
+  private final AtomicInteger connectingPeersCount = new AtomicInteger(0);
   private final ScheduledExecutorService poolLoopExecutor = Executors.newSingleThreadScheduledExecutor();
   private final ScheduledExecutorService disconnectExecutor = Executors.newSingleThreadScheduledExecutor();
 
@@ -102,9 +106,9 @@ public class ConnPoolService extends P2pEventHandler {
     });
 
     //calculate lackSize exclude config activeNodes
-    int size = Math.max(p2pConfig.getMinConnections() - activePeers.size(),
+    int lackSize = Math.max(
+        p2pConfig.getMinConnections() - connectingPeersCount.get() - passivePeersCount.get(),
         p2pConfig.getMinActiveConnections() - activePeersCount.get());
-    int lackSize = size - connectNodes.size();
 
     //choose lackSize nodes from nodeManager that meet special requirement
     if (lackSize > 0) {
@@ -114,12 +118,31 @@ public class ConnPoolService extends P2pEventHandler {
       connectNodes.addAll(newNodes);
     }
 
-    log.debug("Lack size:{}, connectNodes size:{}", size, connectNodes.size());
+    log.debug("Lack size:{}, connectNodes size:{}", lackSize, connectNodes.size());
+
     //establish tcp connection with chose nodes by peerClient
+    AtomicInteger failedCount = new AtomicInteger();
     connectNodes.forEach(n -> {
-      peerClient.connectAsync(n, false);
+      ChannelFuture cf = peerClient.connectAsync(n, false);
+      if (!p2pConfig.getActiveNodes().contains(n.getInetSocketAddress())) {
+        if (cf != null) {
+          connectingPeersCount.incrementAndGet();
+        } else {
+          failedCount.getAndIncrement();
+        }
+      }
       peerClientCache.put(n.getInetSocketAddress().getAddress(), System.currentTimeMillis());
     });
+
+    if (failedCount.get() > 0) {
+      poolLoopExecutor.submit(() -> {
+        try {
+          connect();
+        } catch (Exception t) {
+          log.error("Exception in poolLoopExecutor worker", t);
+        }
+      });
+    }
   }
 
   public List<Node> getNodes(Set<InetSocketAddress> inetSocketAddresses, Set<String> nodesInUse,
@@ -181,6 +204,20 @@ public class ConnPoolService extends P2pEventHandler {
         passivePeersCount.get());
   }
 
+  public void triggerConnect(InetSocketAddress address) {
+    if (p2pConfig.getActiveNodes().contains(address)) {
+      return;
+    }
+    connectingPeersCount.decrementAndGet();
+    poolLoopExecutor.submit(() -> {
+      try {
+        connect();
+      } catch (Exception t) {
+        log.error("Exception in poolLoopExecutor worker", t);
+      }
+    });
+  }
+
   @Override
   public synchronized void onConnect(Channel peer) {
     if (!activePeers.contains(peer)) {
@@ -201,6 +238,7 @@ public class ConnPoolService extends P2pEventHandler {
         passivePeersCount.decrementAndGet();
       } else {
         activePeersCount.decrementAndGet();
+        triggerConnect(peer.getInetSocketAddress());
       }
       activePeers.remove(peer);
     }
