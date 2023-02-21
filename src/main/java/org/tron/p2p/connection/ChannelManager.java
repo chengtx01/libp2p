@@ -203,4 +203,8 @@ public class ChannelManager {
       c2.close();
     }
   }
+
+  public static void triggerConnect(InetSocketAddress address) {
+    connPoolService.triggerConnect(address);
+  }
 }

@@ -64,7 +64,7 @@ public class ConnPoolService extends P2pEventHandler {
     this.peerClient = peerClient;
     poolLoopExecutor.scheduleWithFixedDelay(() -> {
       try {
-        connect();
+        connect(false);
       } catch (Exception t) {
         log.error("Exception in poolLoopExecutor worker", t);
       }
@@ -81,7 +81,7 @@ public class ConnPoolService extends P2pEventHandler {
     }
   }
 
-  private void connect() {
+  private void connect(boolean isFilterActiveNodes) {
     List<Node> connectNodes = new ArrayList<>();
 
     //collect already used nodes in channelManager
@@ -97,7 +97,7 @@ public class ConnPoolService extends P2pEventHandler {
     });
 
     p2pConfig.getActiveNodes().forEach(address -> {
-      if (!addressInUse.contains(address.getAddress())) {
+      if (!isFilterActiveNodes && !addressInUse.contains(address.getAddress())) {
         addressInUse.add(address.getAddress());
         inetSocketAddresses.add(address);
         Node node = new Node(address); //use a random NodeId for config activeNodes
@@ -123,26 +123,12 @@ public class ConnPoolService extends P2pEventHandler {
     //establish tcp connection with chose nodes by peerClient
     AtomicInteger failedCount = new AtomicInteger();
     connectNodes.forEach(n -> {
-      ChannelFuture cf = peerClient.connectAsync(n, false);
-      if (!p2pConfig.getActiveNodes().contains(n.getInetSocketAddress())) {
-        if (cf != null) {
-          connectingPeersCount.incrementAndGet();
-        } else {
-          failedCount.getAndIncrement();
-        }
-      }
+      peerClient.connectAsync(n, false);
       peerClientCache.put(n.getInetSocketAddress().getAddress(), System.currentTimeMillis());
+      if (!p2pConfig.getActiveNodes().contains(n.getInetSocketAddress())) {
+        connectingPeersCount.incrementAndGet();
+      }
     });
-
-    if (failedCount.get() > 0) {
-      poolLoopExecutor.submit(() -> {
-        try {
-          connect();
-        } catch (Exception t) {
-          log.error("Exception in poolLoopExecutor worker", t);
-        }
-      });
-    }
   }
 
   public List<Node> getNodes(Set<InetSocketAddress> inetSocketAddresses, Set<String> nodesInUse,
@@ -211,7 +197,7 @@ public class ConnPoolService extends P2pEventHandler {
     connectingPeersCount.decrementAndGet();
     poolLoopExecutor.submit(() -> {
       try {
-        connect();
+        connect(true);
       } catch (Exception t) {
         log.error("Exception in poolLoopExecutor worker", t);
       }
@@ -238,7 +224,6 @@ public class ConnPoolService extends P2pEventHandler {
         passivePeersCount.decrementAndGet();
       } else {
         activePeersCount.decrementAndGet();
-        triggerConnect(peer.getInetSocketAddress());
       }
       activePeers.remove(peer);
     }
