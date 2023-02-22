@@ -9,8 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.tron.p2p.connection.Channel;
 import org.tron.p2p.connection.ChannelManager;
 
-import java.net.InetSocketAddress;
-
 @Slf4j(topic = "net")
 public class P2pChannelInitializer extends ChannelInitializer<NioSocketChannel> {
 
@@ -41,9 +39,8 @@ public class P2pChannelInitializer extends ChannelInitializer<NioSocketChannel> 
             ChannelManager.notifyDisconnect(channel);
           }
         } finally {
-          InetSocketAddress address = channel.getInetSocketAddress();
-          if (address != null) {
-            ChannelManager.triggerConnect(address);
+          if (channel.getInetSocketAddress() != null && channel.isActive()) {
+            ChannelManager.triggerConnect(channel.getInetSocketAddress());
           }
         }
       });

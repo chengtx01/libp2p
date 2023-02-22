@@ -55,7 +55,7 @@ public class ChannelManager {
     connPoolService = new ConnPoolService();
     handshakeService = new HandshakeService();
     peerServer.init();
-    peerClient.init(connPoolService);
+    peerClient.init();
     keepAliveService.init();
     connPoolService.init(peerClient);
   }

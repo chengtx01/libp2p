@@ -12,17 +12,15 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.tron.p2p.base.Parameter;
-import org.tron.p2p.connection.business.pool.ConnPoolService;
+import org.tron.p2p.connection.ChannelManager;
 import org.tron.p2p.discover.Node;
 
 @Slf4j(topic = "net")
 public class PeerClient {
 
   private EventLoopGroup workerGroup;
-  private ConnPoolService connPoolService;
 
-  public void init(ConnPoolService connPoolService) {
-    this.connPoolService = connPoolService;
+  public void init() {
     workerGroup = new NioEventLoopGroup(0, new ThreadFactory() {
       private final AtomicInteger cnt = new AtomicInteger(0);
 
@@ -55,7 +53,7 @@ public class PeerClient {
             log.warn("Connect to peer {} fail, cause:{}", node.getInetSocketAddress().getAddress(),
                 future.cause().getMessage());
             future.channel().close();
-            connPoolService.triggerConnect(node.getInetSocketAddress());
+            ChannelManager.triggerConnect(node.getInetSocketAddress());
           }
         });
   }
