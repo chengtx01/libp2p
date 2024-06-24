@@ -126,7 +126,8 @@ public class ConnPoolService extends P2pEventHandler {
         addressInUse.add(address.getAddress());
         inetInUse.add(address);
         Node node = new Node(address); //use a random NodeId for config activeNodes
-        if (node.getPreferInetSocketAddress() != null) {
+        if (node.getPreferInetSocketAddress() != null
+            && peerClientCache.getIfPresent(node.getPreferInetSocketAddress()) == null) {
           connectNodes.add(node);
         }
       }
@@ -192,9 +193,9 @@ public class ConnPoolService extends P2pEventHandler {
     {
       connectNodes.forEach(n -> {
         log.info("Connect to peer {}", n.getPreferInetSocketAddress());
-        peerClient.connectAsync(n, false);
         peerClientCache.put(n.getPreferInetSocketAddress().getAddress(),
             System.currentTimeMillis());
+        peerClient.connectAsync(n, false);
         if (!configActiveNodes.contains(n.getPreferInetSocketAddress())) {
           connectingPeersCount.incrementAndGet();
         }
@@ -265,6 +266,8 @@ public class ConnPoolService extends P2pEventHandler {
 
   public void triggerConnect(InetSocketAddress address) {
     if (configActiveNodes.contains(address)) {
+      // delete address from peerClientCache
+      peerClientCache.invalidate(address.getAddress());
       return;
     }
     connectingPeersCount.decrementAndGet();
