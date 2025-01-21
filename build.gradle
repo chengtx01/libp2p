@@ -71,7 +71,9 @@ dependencies {
     testImplementation group: 'org.projectlombok', name: 'lombok', version: '1.18.12'
     annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.12'
 
-    implementation group: 'dnsjava', name: 'dnsjava', version: '3.6.2'
+    implementation group: 'dnsjava', name: 'dnsjava', version: '3.6.2', {
+        exclude group: 'org.bouncycastle', module: 'bcprov-jdk18on'
+    }
     implementation group: 'org.web3j', name: 'crypto', version: '5.0.0'
     implementation('software.amazon.awssdk:route53:2.18.41', {
         exclude group: 'io.netty', module: 'netty-codec-http2'
